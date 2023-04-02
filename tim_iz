@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+import random as rd
+import matplotlib.pyplot as plt
+import networkx as nx
+
+width = 20
+height = 20
+
+
+def generate_map():
+    grid = [[7 if rd.random() < 0.2 else 0
+             for column in range(width)] for row in range(height)]
+    wall = []
+    for i in range(len(grid) - 1):
+        for j in range(len(grid[i]) - 1):
+            if grid[i][j] == 7:
+                wall.append((j, i))
+    return grid, wall
+
+
+def robot_spawn(grid, wall):
+    while True:
+        rob1 = (rd.randint(0, width - 1), rd.randint(0, height - 1))
+        if rob1 not in wall:
+            grid[rob1[1]][rob1[0]] = 1
+            break
+    while True:
+        rob2 = (rd.randint(0, width - 1), rd.randint(0, height - 1))
+        if rob2 not in wall and rob2 != rob1:
+            grid[rob2[1]][rob2[0]] = 2
+            break
+    while True:
+        rob3 = (rd.randint(0, width - 1), rd.randint(0, height - 1))
+        if rob3 not in wall and rob3 != rob1 and rob3 != rob2:
+            grid[rob2[1]][rob2[0]] = 3
+            break
+    return grid, rob1, rob2, rob3
+
+
+def ways(x, y):
+    check = lambda x, y: True if 0 <= x < width and 0 <= y < height and \
+                                 (x, y) != rob1 and (x, y) != rob2 and (x, y) != rob3 and (x, y) not in wall else False
+    ways = [-1, 0], [0, 1], [1, 0], [0, -1]
+    return [(x + dx, y + dy) for dx, dy in ways if check(x + dx, y + dy)]
+
+
+def graph_step(node):
+    rb1, rb2, rb3 = node
+    rob1_ways = ways(*rb1)
+    rob2_ways = ways(*rb2)
+    rob3_ways = ways(*rb3)
+    for i in range(len(rob1_ways)):
+        for j in range(len(rob2_ways)):
+            for u in range(len(rob3_ways)):
+                if rob1_ways[i] != rob2_ways[j] and rob1_ways[i] != rob3_ways[u] and rob2_ways[j] != rob3_ways[u] and \
+                        (rob1_ways[i], rob2_ways[j], rob3_ways[u]) not in known_nodes:
+                    known_nodes.append((rob1_ways[i], rob2_ways[j], rob3_ways[u]))
+                    G.add_node((rob1_ways[i], rob2_ways[j], rob3_ways[u]))
+                    G.add_edge((rb1, rb2, rb3), (rob1_ways[i], rob2_ways[j], rob3_ways[u]))
+
+
+grid, wall = generate_map()
+grid, rob1, rob2, rob3 = robot_spawn(grid, wall)
+
+G = nx.DiGraph()
+known_nodes = [(rob1, rob2, rob3)]
+G.add_node((rob1, rob2, rob3))
+counter = 0
+while True:
+    graph_step(known_nodes[counter])
+    counter += 1
+    if counter == 1:  # Этим числом регулируется количество нод к которым ищутся пути
+        break
+
+pos = nx.spring_layout(G,weight='weight',scale=20)
+# nx.draw(G)
+nx.draw_networkx_nodes(G, pos, node_size=70)
+nx.draw_networkx_edges(G, pos)
+nx.draw_networkx_labels(G,pos,font_size=10)
+for i in grid:
+    print(i)
+for i in G.edges:
+    print(i)
+plt.show()
